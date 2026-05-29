@@ -1,0 +1,14 @@
+# Loại bỏ các tệp mô hình PyTorch nặng
+*.pt
+*.pth
+*.bin
+*.safetensors
+result/lstm/*.pt
+result/distilbert/*.pt
+results_test/
+# Loại bỏ cache và môi trường ảo
+__pycache__/
+.ipynb_checkpoints/
+venv/
+.venv/
+env/

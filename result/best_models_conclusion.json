@@ -1,0 +1,21 @@
+{
+    "best_lstm": {
+        "lr": 0.001,
+        "dropout": 0.1,
+        "batch_size": 8,
+        "test_accuracy": 0.8160919540229885,
+        "test_precision": 0.7544706167202795,
+        "test_recall": 0.773418917770982,
+        "test_f1": 0.7627584443805324
+    },
+    "best_distilbert": {
+        "lr": 5e-05,
+        "dropout": 0.3,
+        "batch_size": 8,
+        "test_accuracy": 0.8589080459770115,
+        "test_precision": 0.8221061889752912,
+        "test_recall": 0.7829064729867482,
+        "test_f1": 0.7992572890946218
+    },
+    "winner": "distilbert"
+}
