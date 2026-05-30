@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fake News Detection Dashboard - LSTM vs DistilBERT</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="static/style.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">
+          <i data-lucide="shield-alert"></i>
+        </div>
+        <div class="logo-text">
+          <h1>Fake News Portal</h1>
+          <p>LSTM vs DistilBERT Model Detection & Evaluation</p>
+        </div>
+      </div>
+      
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="detector-tab">
+          <i data-lucide="scan-search"></i> Nhận diện Tin tức
+        </button>
+        <button class="tab-btn" data-tab="analytics-tab">
+          <i data-lucide="bar-chart-3"></i> So sánh & Đánh giá
+        </button>
+        <button class="tab-btn" data-tab="hyperparams-tab">
+          <i data-lucide="sliders"></i> Bảng Hyperparameters
+        </button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- TAB 1: DETECTOR -->
+      <section id="detector-tab" class="tab-content active">
+        <div class="grid-2">
+          <!-- Input Area -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="text-quote"></i> Kiểm tra tin tức mới
+            </div>
+            <div class="input-area-container">
+              <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                Nhập tiêu đề hoặc đoạn tin tức tiếng Anh (hoặc tiếng Việt) vào ô dưới đây. Hệ thống sẽ tiến hành tiền xử lý, chạy song song qua hai mô hình LSTM & DistilBERT tốt nhất để trả về dự đoán độ tin cậy.
+              </p>
+              <textarea id="news-input" placeholder="Ví dụ: Trump's new policy has been completely rejected by congress..."></textarea>
+              <button id="btn-detect" class="btn-predict">
+                <i data-lucide="search"></i> Phân loại Tin tức
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Guidelines & Model Info -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="info"></i> Tổng quan 2 Model Tốt Nhất
+            </div>
+            <div id="models-summary-info" class="grid-2" style="gap: 1rem;">
+              <!-- Will be loaded dynamically -->
+              <div class="stat-box">
+                <div class="stat-label" style="color: hsl(217, 91%, 60%);">Best LSTM Model</div>
+                <div class="stat-val" id="summary-lstm-acc">-</div>
+                <div class="stat-sub" id="summary-lstm-params">Loading parameters...</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label" style="color: hsl(270, 91%, 65%);">Best DistilBERT</div>
+                <div class="stat-val" id="summary-bert-acc">-</div>
+                <div class="stat-sub" id="summary-bert-params">Loading parameters...</div>
+              </div>
+            </div>
+            <div style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+              <p style="margin-bottom: 0.5rem;"><strong style="color: var(--text-primary);">Chú ý:</strong> Bộ dữ liệu gốc là <strong>FakeNewsNet</strong> (gồm GossipCop và Politifact), tối ưu cho tiêu đề tin tức bằng tiếng Anh.</p>
+              <p>Mô hình LSTM sử dụng bộ từ vựng Vocabulary tự thiết lập từ tập train. Mô hình DistilBERT tận dụng Transformer Tokenizer và kiến trúc phân loại sâu cho hiệu suất vượt trội.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prediction Results (Dynamic) -->
+        <div id="prediction-results" class="card" style="display: none;">
+          <div class="card-title" style="border-bottom: none; margin-bottom: 0.5rem;">
+            <i data-lucide="check-circle-2"></i> Kết quả Nhận diện Song song
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;" id="server-device-info">
+            Thiết bị xử lý inference: CPU
+          </p>
+          <div class="results-container">
+            <!-- LSTM Result -->
+            <div class="model-result-card" id="lstm-result-card">
+              <div class="model-header">
+                <span class="model-name" style="color: hsl(217, 91%, 60%);">LSTM Classifier</span>
+                <span class="latency-tag" id="lstm-latency">-- ms</span>
+              </div>
+              <div style="text-align: center; margin: 1rem 0;">
+                <div class="verdict-badge" id="lstm-verdict">--</div>
+              </div>
+              <div class="confidence-container">
+                <div class="confidence-header">
+                  <span>Độ tin cậy REAL:</span>
+                  <span id="lstm-conf-real">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill real" id="lstm-bar-real"></div>
+                </div>
+              </div>
+              <div class="confidence-container">
+                <div class="confidence-header">
+                  <span>Độ tin cậy FAKE:</span>
+                  <span id="lstm-conf-fake">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill fake" id="lstm-bar-fake"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- DistilBERT Result -->
+            <div class="model-result-card" id="bert-result-card">
+              <div class="model-header">
+                <span class="model-name" style="color: hsl(270, 91%, 65%);">DistilBERT Model</span>
+                <span class="latency-tag" id="bert-latency">-- ms</span>
+              </div>
+              <div style="text-align: center; margin: 1rem 0;">
+                <div class="verdict-badge" id="bert-verdict">--</div>
+              </div>
+              <div class="confidence-container">
+                <div class="confidence-header">
+                  <span>Độ tin cậy REAL:</span>
+                  <span id="bert-conf-real">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill real" id="bert-bar-real"></div>
+                </div>
+              </div>
+              <div class="confidence-container">
+                <div class="confidence-header">
+                  <span>Độ tin cậy FAKE:</span>
+                  <span id="bert-conf-fake">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill fake" id="bert-bar-fake"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ANALYTICS -->
+      <section id="analytics-tab" class="tab-content">
+        <!-- Winner Card & Stats -->
+        <div class="card winner-card">
+          <div class="winner-badge">
+            <i data-lucide="trophy" style="width: 14px; height: 14px;"></i> Winner Model
+          </div>
+          <div class="card-title" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0;">
+            Kết luận So sánh Hiệu năng
+          </div>
+          <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1rem; color: var(--real-color);" id="winner-title">
+            DistilBERT is the Best Performer
+          </h2>
+          <p id="winner-description" style="font-size: 0.95rem; color: var(--text-secondary); max-width: 800px; line-height: 1.6;">
+            Dựa trên kết quả đánh giá trên tập dữ liệu kiểm thử (Test Set) của bộ checkpoint huấn luyện, mô hình DistilBERT đạt F1-score vượt trội so với LSTM truyền thống. Điều này chứng minh sức mạnh của cơ chế Self-Attention trong việc hiểu ngữ cảnh tin tức.
+          </p>
+        </div>
+
+        <!-- Metric comparison grids -->
+        <div class="grid-2">
+          <!-- Metrics Bar Chart -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="bar-chart-horizontal"></i> Đồ thị So sánh Test Set Metrics
+            </div>
+            <div class="chart-container">
+              <canvas id="metricsCompareChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Metrics summary table -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="file-check-2"></i> Bảng tổng hợp Best Model Metrics
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mô hình</th>
+                    <th>Accuracy</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                  </tr>
+                </thead>
+                <tbody id="best-metrics-body">
+                  <tr>
+                    <td><span class="badge-model lstm">LSTM</span></td>
+                    <td id="best-lstm-acc">-</td>
+                    <td id="best-lstm-prec">-</td>
+                    <td id="best-lstm-rec">-</td>
+                    <td id="best-lstm-f1">-</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-model distilbert">DistilBERT</span></td>
+                    <td id="best-bert-acc">-</td>
+                    <td id="best-bert-prec">-</td>
+                    <td id="best-bert-rec">-</td>
+                    <td id="best-bert-f1">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Training Curves (Loss / F1 over epochs) -->
+        <div class="card">
+          <div class="card-title">
+            <i data-lucide="trending-up"></i> Tiến trình Huấn luyện của 2 Mô hình Tốt nhất (Training Curves)
+          </div>
+          <div class="curves-grid">
+            <div>
+              <h3 style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">
+                Đồ thị Biến thiên Loss qua các Epochs
+              </h3>
+              <div class="chart-container">
+                <canvas id="lossCurvesChart"></canvas>
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">
+                Đồ thị Biến thiên F1-Score (Macro) qua các Epochs
+              </h3>
+              <div class="chart-container">
+                <canvas id="f1CurvesChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: HYPERPARAMETERS GRID -->
+      <section id="hyperparams-tab" class="tab-content">
+        <div class="card">
+          <div class="card-title">
+            <i data-lucide="grid"></i> Lịch sử Train Toàn bộ Checkpoints & Hyperparameter Grid
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Bộ bảng này so sánh toàn bộ quá trình tinh chỉnh tham số (Hyperparameter tuning) của cả 2 mô hình dựa trên file <code style="color: var(--primary);">all_runs_results.csv</code>. Bạn có thể lọc nhanh theo mô hình hoặc các tham số Learning Rate, Dropout (0.1 / 0.3 / 0.5), Batch Size (8 / 16 / 32).
+          </p>
+
+          <!-- Table Controls / Filters -->
+          <div class="table-controls">
+            <div class="filter-group">
+              <div>
+                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Kiến Trúc Model</label>
+                <select id="filter-model" class="filter-select">
+                  <option value="all">Tất cả Mô hình</option>
+                  <option value="lstm">LSTM</option>
+                  <option value="distilbert">DistilBERT</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Dropout</label>
+                <select id="filter-dropout" class="filter-select">
+                  <option value="all">Tất cả Dropout</option>
+                  <option value="0.1">0.1</option>
+                  <option value="0.3">0.3</option>
+                  <option value="0.5">0.5</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Batch Size</label>
+                <select id="filter-batch-size" class="filter-select">
+                  <option value="all">Tất cả Batch Size</option>
+                  <option value="8">8</option>
+                  <option value="16">16</option>
+                  <option value="32">32</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Sắp xếp theo</label>
+              <select id="sort-metrics" class="filter-select">
+                <option value="test_f1-desc">Test F1-Score (Cao &rarr; Thấp)</option>
+                <option value="test_accuracy-desc">Test Accuracy (Cao &rarr; Thấp)</option>
+                <option value="val_f1-desc">Validation F1-Score (Cao &rarr; Thấp)</option>
+                <option value="train_loss-asc">Train Loss (Thấp &rarr; Cao)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- The Table -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Learning Rate</th>
+                  <th>Dropout</th>
+                  <th>Batch Size</th>
+                  <th>Epochs</th>
+                  <th>Best Epoch</th>
+                  <th>Val Loss</th>
+                  <th>Val F1-Score</th>
+                  <th>Test Accuracy</th>
+                  <th>Test F1-Score</th>
+                </tr>
+              </thead>
+              <tbody id="hyperparams-table-body">
+                <!-- Dynamically populated rows -->
+                <tr>
+                  <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    Đang tải dữ liệu lịch sử checkpoint...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="static/app.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>

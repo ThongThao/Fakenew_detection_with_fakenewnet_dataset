@@ -1,187 +1,143 @@
+# FakeNewsNet Detection & Evaluation Portal
 
+This repository contains a complete pipeline for **Fake News Detection** trained on the **FakeNewsNet** dataset (including PolitiFact and GossipCop articles). It includes text preprocessing, model training pipelines (Bi-LSTM vs. DistilBERT), model evaluation scripts, and an interactive FastAPI-based web application to test news authenticity and visualize training performance metrics.
 
-## FakeNewsNet
+---
 
-*** We will never ask for money to share the datasets. If someone claims that s/he has the all the raw data and wants a payment, please be careful. ***
+## 🌟 Key Features
 
-***We released a tool [FakeNewsTracker], for collecting, analyzing, and visualizing of fake news and the related dissemination on social media. Check it out!***
+1. **Robust Text Preprocessing**: Cleans HTML tags, URLs, and extra whitespaces while preserving multilingual characters and applying WordNet lemmatizers.
+2. **Model Training Grid Search**: Supports training and hyperparameter tuning for:
+   - **Bi-LSTM** (Bidirectional LSTM Classifier with GloVe/Embedding representations).
+   - **DistilBERT** (Hugging Face transformer classification).
+   - Dynamic parameter tuning across different Learning Rates, Dropouts (`0.1 / 0.3 / 0.5`), and Batch Sizes (`8 / 16 / 32`).
+3. **Automated Evaluation**: Evaluates best-performing models on the test set, creating confusion matrices, learning history curves, and overall summaries.
+4. **Interactive FastAPI Web Dashboard**:
+   - **Real-time Predictor**: Evaluates user input news side-by-side using the best LSTM and DistilBERT models.
+   - **Comparative Analytics**: Shows performance charts (Accuracy, Precision, Recall, F1) and training progression curves.
+   - **Hyperparameter Grid**: Interactive table displaying performance data for all 36 training configurations.
 
-***The latest dataset paper with detailed analysis on the dataset  can be found at [FakeNewsNet]***
+---
 
-**Please use the current up-to-date version of dataset**
+## 📂 Project Structure
 
-Previous version of the dataset is available in branch named `old-version` of this repository.
-
-
-## Overview  
-
-Complete dataset cannot be distributed because of Twitter privacy policies and news publisher copy rights.  Social engagements and user information are not disclosed because of Twitter Policy. This code repository can be used to download news articles from published websites and relevant social media data from Twitter. 
-
-The minimalistic version of latest dataset provided in this repo (located in `dataset` folder) include following files:
-
- - `politifact_fake.csv` -  Samples related to fake news collected from PolitiFact 
- - `politifact_real.csv` -  Samples related to real news collected  from PolitiFact 
- - `gossipcop_fake.csv` - Samples related to fake news collected from GossipCop
-  - `gossipcop_real.csv` - Samples related to real news collected from GossipCop
-
-Each of the above CSV files is comma separated file and have the following columns
-
- - `id` - Unique identifider for each news
- - `url` - Url of the article from web that published that news 
- - `title` - Title of the news article
- - `tweet_ids` - Tweet ids of tweets sharing the news. This field is list of tweet ids separated by tab.
-
-## Installation    
-
-###  Requirements:
- Data download scripts are writtern in python and requires `python 3.6 +` to run.
- 
-Twitter API keys are used for collecting data from Twitter.  Make use of the following link to get Twitter API keys    
-https://developer.twitter.com/en/docs/basics/authentication/guides/access-tokens.html   
-
-Script make use of keys from  _tweet_keys_file.json_ file located in `code/resources` folder. So the API keys needs to be updated in `tweet_keys_file.json` file.  Provide the keys as array of JSON object with attributes `app_key,app_secret,oauth_token,oauth_token_secret` as mentioned in sample file.
-
-Install all the libraries in `requirements.txt` using the following command
-    
-    pip install -r requirements.txt
-
-
-###  Configuration:
-
- FakeNewsNet contains 2 datasets collected using ground truths from _Politifact_ and _Gossipcop_.  
-    
-The `config.json` can be used to configure and collect only certain parts of the dataset. Following attributes can be configured    
-  
- - **num_process** - (default: 4) This attribute indicates the number of parallel processes used to collect data.    
- - **tweet_keys_file** - Provide the number of keys available configured in tweet_keys_file.txt file       
- - **data_collection_choice** - It is an array of choices of various parts of the dataset. Configure accordingly to download only certain parts of the dataset.       
-   Available values are  
-     {"news_source": "politifact", "label": "fake"},{"news_source": "politifact", "label":    "real"}, {"news_source": "gossipcop", "label": "fake"},{"news_source": "gossipcop", "label": "real"}  
-  
- - **data_features_to_collect** - FakeNewsNet has multiple dimensions of data (News + Social). This configuration allows one to download desired dimension of the dataset. This is an array field and can take following values.  
-	              
-	 - **news_articles** : This option downloads the news articles for the dataset.  
-     - **tweets** : This option downloads tweets objects posted sharing the news in Twitter. This makes use of Twitter API to download tweets.  
-     - **retweets**: This option allows to download the retweets of the tweets provided in the dataset.  
-     - **user_profile**: This option allows to download the user profile information of the users involved in tweets. To download user profiles, tweet objects need to be downloaded first in order to identify users involved in tweets.  
-     - **user_timeline_tweets**: This option allows to download upto 200 recent tweets from the user timeline. To download user's recent tweets, tweet objects needs to be downloaded first in order to identify users involved in tweets.
-     - **user_followers**: This option allows to download the user followers ids of the users involved in tweets. To download user followers ids, tweet objects need to be downloaded first in order to identify users involved in tweets.  
-     - **user_following**: This option allows to download the user following ids of the users involved in tweets. To download user's following ids, tweet objects needs to be downloaded first in order to identify users involved in tweets.
-
-
-## Running Code
-
-Inorder to collect data set fast, code makes user of process parallelism and to synchronize twitter key limitations across mutiple python processes, a lightweight flask application is used as keys management server.
-Execute the following commands inside `code` folder,
-
-    nohup python -m resource_server.app &> keys_server.out&
-
-The above command will start the flask server in port 5000 by default.
-
-**Configurations should be done before proceeding to the next step !!**
-
-Execute the following command to start data collection,
-
-    nohup python main.py &> data_collection.out&
-
-Logs are wittern in the same folder in a file named as `data_collection_<timestamp>.log` and can be used for debugging purposes.
-
-The dataset will be downloaded in the directory provided in the `config.json` and progress can be monitored in `data_collection.out` file. 
-
-### Dataset Structure
-The downloaded dataset will have the following  folder structure,
 ```bash
-├── gossipcop
-│   ├── fake
-│   │   ├── gossipcop-1
-│   │	│	├── news content.json
-│   │	│	├── tweets
-│   │	│	│	├── 886941526458347521.json
-│   │	│	│	├── 887096424105627648.json
-│   │	│	│	└── ....		
-│   │	│  	└── retweets
-│   │	│		├── 887096424105627648.json
-│   │	│		├── 887096424105627648.json
-│   │	│		└── ....
-│   │	└── ....			
-│   └── real
-│      ├── gossipcop-1
-│      │	├── news content.json
-│      │	├── tweets
-│      │	└── retweets
-│		└── ....		
-├── politifact
-│   ├── fake
-│   │   ├── politifact-1
-│   │   │	├── news content.json
-│   │   │	├── tweets
-│   │   │	└── retweets
-│   │	└── ....		
-│   │
-│   └── real
-│      ├── poliifact-2
-│      │	├── news content.json
-│      │	├── tweets
-│      │	└── retweets
-│      └── ....					
-├── user_profiles
-│		├── 374136824.json
-│		├── 937649414600101889.json
-│   		└── ....
-├── user_timeline_tweets
-│		├── 374136824.json
-│		├── 937649414600101889.json
-│	   	└── ....
-└── user_followers
-│		├── 374136824.json
-│		├── 937649414600101889.json
-│	   	└── ....
-└──user_following
-        	├── 374136824.json
-		├── 937649414600101889.json
-	   	└── ....
+├── dataset/                        # Raw CSV articles from Politifact and GossipCop
+├── data_result/                    # Split CSV datasets (train.csv, val.csv, test.csv)
+├── result/                         # Training outputs, metrics, and models
+│   ├── checkpoint/                 # Saved model weights (.pt files)
+│   ├── lstm/                       # LSTM validation history logs & pickle vocab files
+│   ├── distilbert/                 # DistilBERT validation history logs
+│   ├── charts/                     # Generated evaluation curve charts
+│   ├── all_runs_results.csv        # Comprehensive grid search results CSV
+│   └── best_models_conclusion.json # Conclusion summary indicating the winner model
+└── fakenews_detection/             # Core codebase
+    ├── preprocessing.py            # Text cleaning and dataset division
+    ├── lstm_model.py               # Custom vocab dataset, and LSTM PyTorch model
+    ├── transformer_model.py        # Hugging Face DistilBERT configuration & model loader
+    ├── train.py                    # Training & validation loop with Early Stopping
+    ├── eval.py                     # Evaluation script generating test charts
+    ├── app.py                      # FastAPI web server and API endpoints
+    └── static/                     # Frontend dashboard assets
+        ├── index.html              # Main HTML5 template
+        ├── style.css               # Glassmorphic dark mode styling
+        └── app.js                  # App state, Chart.js graphs, and UI bindings
 ```
-**News Content**
 
-`news content.json`:
-This json includes all the meta information of the news articles collected using the provided news source URLs. This is a JSON object with attributes including:
+---
 
- - `text` is the text of the body of the news article. 
- - `images` is a list of the URLs of all the images in the news article web page. 
- - `publish date`  indicate the date that news article is published.
+## 🚀 Getting Started
 
-**Social Context**
+### 1. Requirements & Setup
 
-**`tweets` folder**:
-This folder contains all tweets related to the news sample. This contains the tweet objects of the all the tweet ids provided in the tweet_ids attribute of the dataset csv. All the files in this folder are named as `<tweet_id>.json` . Each `<tweet_id>.json` file is a JSON file with format mentioned in [https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html).
+Make sure Python 3.8+ is installed on your system. Install the required dependencies:
 
-**`retweets` folder**:
-This folder contains the retweets of the all tweets posted sharing a particular news article. This folder contains files named as  `<tweet_id>.json` and it contains a array of the retweets for a particular tweets.  Each object int the retweet array have format mentioned in [https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/get-statuses-retweets-id](https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/get-statuses-retweets-id).
+```bash
+pip install -r requirements.txt
+pip install fastapi uvicorn pydantic transformers torch pandas scikit-learn
+```
 
-**`user_profiles` folder**:
-This folder contains all the user profiles of the users posting tweets related to all news articles. This same folder is used for both datasources ( Politifact and GossipCop). It contains files named as `<user_id>.json` and have JSON formated mentioned in [https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/user-object.html](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/user-object.html)
+---
 
-**`user_timeline_tweets` folder**:
-This folder contains files representing the time line of tweets of users posting tweets related to fake and real news. All files in the folder are named as `<user_id>.json` and have JSON array of upto 200 recent tweets of the users. The files have format mentioned same as [https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline.html](https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline.html).
+## 🧠 Machine Learning Pipeline
 
-**`user_followers` folder**:
-This folder contains all the user followers ids of the users posting tweets related to all news articles. This same folder is used for both datasources ( Politifact and GossipCop). It contains files named as `<user_id>.json` and have JSON data with `user_id` and `followers` attributes.
+### Step 1: Preprocess Data
+Run the preprocessing script to clean the articles and split them into Train, Validation, and Test sets:
 
-**`user_following` folder**:
-This folder contains all the user following ids of the users posting tweets related to all news articles. This same folder is used for both datasources ( Politifact and GossipCop). It contains files named as `<user_id>.json` and have JSON data with `user_id` and `following` attributes.
+```bash
+python fakenews_detection/preprocessing.py
+```
+*Creates `train.csv`, `val.csv`, and `test.csv` in `data_result/`.* Detailed logic can be inspected in [preprocessing.py](file:///d:/FakeNewsNet_Detection/fakenews_detection/preprocessing.py).
 
+### Step 2: Model Training
+Train individual architectures with selected hyperparameters (Learning Rate, Dropout, and Batch Size) to run grid search optimization:
 
-## References
-If you use this dataset, please cite the following papers:
-~~~~
+```bash
+# Example training LSTM:
+python fakenews_detection/train.py --model lstm --lr 0.001 --dropout 0.1 --batch_size 8 --epochs 10
+
+# Example training DistilBERT:
+python fakenews_detection/train.py --model distilbert --lr 5e-5 --dropout 0.3 --batch_size 8 --epochs 5
+```
+*Outputs checkpoints to `result/checkpoint/` and history logs to `result/<model>/`.* Detailed training logic is in [train.py](file:///d:/FakeNewsNet_Detection/fakenews_detection/train.py).
+
+### Step 3: Run Model Evaluation
+Analyze the performance of the best configurations and plot curves:
+
+```bash
+python fakenews_detection/eval.py
+```
+*Generates comparison charts in `result/charts/` and updates [best_models_conclusion.json](file:///d:/FakeNewsNet_Detection/result/best_models_conclusion.json).* See [eval.py](file:///d:/FakeNewsNet_Detection/fakenews_detection/eval.py).
+
+---
+
+## 💻 Running the Web Application
+
+The interactive web portal acts as a dashboard to execute inferences and review model comparisons. Start the FastAPI backend:
+
+```bash
+uvicorn fakenews_detection.app:app --host 127.0.0.1 --port 8080
+```
+
+Once running, navigate to:
+👉 **[http://127.0.0.1:8080/](http://127.0.0.1:8080/)**
+
+### Dashboard Views
+- **Nhận diện Tin tức (Predictor)**: Input any headline to classify it using the loaded checkpoints:
+  - LSTM Checkpoint: [checkpoint_lstm_lr0.001_drop0.1_bs8.pt](file:///d:/FakeNewsNet_Detection/result/checkpoint/checkpoint_lstm_lr0.001_drop0.1_bs8.pt)
+  - DistilBERT Checkpoint: [checkpoint_distilbert_lr5e-05_drop0.3_bs8.pt](file:///d:/FakeNewsNet_Detection/result/checkpoint/checkpoint_distilbert_lr5e-05_drop0.3_bs8.pt)
+- **So sánh & Đánh giá (Analytics)**: View side-by-side bar charts of accuracy/F1 metrics, and line charts showing training history trends.
+- **Bảng Hyperparameters (Tuning Grid)**: Render and query the grid of all 36 runs with filters for model, dropout rate, and batch size.
+
+---
+
+## 📁 Legacy Data Collector (Original FakeNewsNet)
+
+To run the legacy Twitter scraper and crawler, refer to instructions inside the `code` directory:
+
+1. Setup your Twitter API keys in `code/resources/tweet_keys_file.json`.
+2. Configure settings inside `code/config.json`.
+3. Launch the resource server and start collecting:
+   ```bash
+   cd code
+   python -m resource_server.app
+   python main.py
+   ```
+
+---
+
+## 📚 References & Citations
+
+If you use the FakeNewsNet dataset, please cite the following papers:
+
+```bibtex
 @article{shu2018fakenewsnet,
   title={FakeNewsNet: A Data Repository with News Content, Social Context and Dynamic Information for Studying Fake News on Social Media},
-  author={Shu, Kai and  Mahudeswaran, Deepak and Wang, Suhang and Lee, Dongwon and Liu, Huan},
+  author={Shu, Kai and Mahudeswaran, Deepak and Wang, Suhang and Lee, Dongwon and Liu, Huan},
   journal={arXiv preprint arXiv:1809.01286},
   year={2018}
 }
-~~~~
-~~~~
+
 @article{shu2017fake,
   title={Fake News Detection on Social Media: A Data Mining Perspective},
   author={Shu, Kai and Sliva, Amy and Wang, Suhang and Tang, Jiliang and Liu, Huan},
@@ -192,22 +148,7 @@ If you use this dataset, please cite the following papers:
   year={2017},
   publisher={ACM}
 }
-~~~~
-~~~~
-@article{shu2017exploiting,
-  title={Exploiting Tri-Relationship for Fake News Detection},
-  author={Shu, Kai and Wang, Suhang and Liu, Huan},
-  journal={arXiv preprint arXiv:1712.07709},
-  year={2017}
-}
-~~~~
+```
 
-
-
-[Fake News Detection on Social Media: A Data Mining Perspective]:<https://arxiv.org/abs/1708.01967>
-[Exploiting Tri-Relationship for Fake News Detection]:<http://arxiv.org/abs/1712.07709>
-[FakeNewsTracker]:<http://blogtrackers.fulton.asu.edu:3000>
-[FakeNewsNet]:<https://arxiv.org/abs/1809.01286>
-
-(C) 2019 Arizona Board of Regents on Behalf of ASU
-
+---
+*(C) 2026 FakeNewsNet Detection Portal.*
