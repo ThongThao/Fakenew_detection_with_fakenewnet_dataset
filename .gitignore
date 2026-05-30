@@ -1,5 +1,5 @@
 # Loại bỏ các tệp mô hình PyTorch nặng
-*.pt
+
 *.pth
 *.bin
 *.safetensors
