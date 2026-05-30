@@ -46,6 +46,14 @@ This repository contains a complete pipeline for **Fake News Detection** trained
 
 ---
 
+## 🔗 Download Model Checkpoints
+
+Download the trained model checkpoints from the following Google Drive link:
+
+👉 [Download FakeNewsNet Models](https://drive.google.com/drive/folders/1e6cuqbHUmbPcS5Nzo5sefbFJDoeYZMpl?usp=drive_link)
+
+Extract the contents and place the model files in the `result/checkpoint/` directory.
+
 ## 🚀 Getting Started
 
 ### 1. Requirements & Setup
